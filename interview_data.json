@@ -1,0 +1,46 @@
+{
+  "available_slots": [
+    {
+      "id": 1,
+      "date": "2026-01-06",
+      "start_time": "10:00",
+      "end_time": "11:00",
+      "interviewer": "김면접관",
+      "is_booked": true,
+      "created_at": "2026-01-05T07:22:31.365855"
+    },
+    {
+      "id": 2,
+      "date": "2026-01-06",
+      "start_time": "14:00",
+      "end_time": "15:00",
+      "interviewer": "김면접관",
+      "is_booked": false,
+      "created_at": "2026-01-05T07:22:31.365988"
+    },
+    {
+      "id": 3,
+      "date": "2026-01-07",
+      "start_time": "09:00",
+      "end_time": "10:00",
+      "interviewer": "이면접관",
+      "is_booked": false,
+      "created_at": "2026-01-05T07:22:31.366100"
+    }
+  ],
+  "scheduled_interviews": [
+    {
+      "id": 1,
+      "slot_id": 1,
+      "date": "2026-01-06",
+      "start_time": "10:00",
+      "end_time": "11:00",
+      "interviewer": "김면접관",
+      "candidate_name": "홍길동",
+      "candidate_email": "hong@example.com",
+      "position": "백엔드 개발자",
+      "status": "scheduled",
+      "scheduled_at": "2026-01-05T07:22:31.366925"
+    }
+  ]
+}
