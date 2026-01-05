@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>버튼식 양방향 통신</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.connected {
+            background: #00ff88;
+        }
+
+        .status-indicator.disconnected {
+            background: #ff4444;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .buttons-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #00d2ff;
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .custom-message {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .custom-message input {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .custom-message input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .custom-message input:focus {
+            border-color: #00d2ff;
+        }
+
+        .messages-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .messages-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .clear-btn {
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .clear-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .messages-container {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .message.sent {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));
+            border-left: 3px solid #667eea;
+        }
+
+        .message.received {
+            background: linear-gradient(135deg, rgba(17, 153, 142, 0.3), rgba(56, 239, 125, 0.3));
+            border-left: 3px solid #38ef7d;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        .message-content {
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        .no-messages {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.5;
+        }
+
+        .emoji {
+            font-size: 1.5rem;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 버튼식 양방향 통신</h1>
+        
+        <div class="status">
+            <span class="status-indicator disconnected" id="statusIndicator"></span>
+            <span id="statusText">연결 중...</span>
+        </div>
+
+        <div class="buttons-section">
+            <div class="section-title">📤 서버로 메시지 보내기</div>
+            
+            <div class="button-grid">
+                <button class="btn btn-primary" onclick="sendMessage('안녕하세요!')">
+                    <span class="emoji">👋</span> 인사하기
+                </button>
+                <button class="btn btn-success" onclick="pingServer()">
+                    <span class="emoji">🏓</span> 핑 테스트
+                </button>
+                <button class="btn btn-warning" onclick="requestTime()">
+                    <span class="emoji">⏰</span> 서버 시간
+                </button>
+                <button class="btn btn-info" onclick="sendMessage('작업을 시작합니다!')">
+                    <span class="emoji">🚀</span> 작업 시작
+                </button>
+            </div>
+
+            <div class="custom-message">
+                <input type="text" id="customInput" placeholder="직접 메시지를 입력하세요..." 
+                       onkeypress="if(event.key==='Enter') sendCustomMessage()">
+                <button class="btn btn-primary" onclick="sendCustomMessage()">
+                    <span class="emoji">📨</span> 전송
+                </button>
+            </div>
+        </div>
+
+        <div class="messages-section">
+            <div class="messages-header">
+                <div class="section-title">📬 메시지 로그</div>
+                <button class="clear-btn" onclick="clearMessages()">🗑️ 지우기</button>
+            </div>
+            <div class="messages-container" id="messagesContainer">
+                <div class="no-messages">
+                    <p>아직 메시지가 없습니다.</p>
+                    <p>버튼을 눌러 서버와 통신해 보세요!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Socket.IO 연결
+        const socket = io();
+        const messagesContainer = document.getElementById('messagesContainer');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        let hasMessages = false;
+
+        // 연결 성공
+        socket.on('connect', () => {
+            statusIndicator.classList.remove('disconnected');
+            statusIndicator.classList.add('connected');
+            statusText.textContent = '서버에 연결됨';
+            console.log('서버에 연결되었습니다!');
+        });
+
+        // 연결 해제
+        socket.on('disconnect', () => {
+            statusIndicator.classList.remove('connected');
+            statusIndicator.classList.add('disconnected');
+            statusText.textContent = '연결 끊김';
+            console.log('서버와 연결이 끊어졌습니다.');
+        });
+
+        // 서버로부터 메시지 수신
+        socket.on('server_message', (data) => {
+            console.log('서버로부터 받은 메시지:', data);
+            addMessage('received', data.message || data.server_reply, data.timestamp);
+        });
+
+        // 메시지 전송 함수
+        function sendMessage(message) {
+            addMessage('sent', message, getCurrentTime());
+            socket.emit('client_message', { message: message });
+        }
+
+        // 커스텀 메시지 전송
+        function sendCustomMessage() {
+            const input = document.getElementById('customInput');
+            const message = input.value.trim();
+            if (message) {
+                sendMessage(message);
+                input.value = '';
+            }
+        }
+
+        // 핑 테스트
+        function pingServer() {
+            addMessage('sent', '🏓 핑!', getCurrentTime());
+            socket.emit('ping_server');
+        }
+
+        // 서버 시간 요청
+        function requestTime() {
+            addMessage('sent', '⏰ 서버 시간 요청', getCurrentTime());
+            socket.emit('request_time');
+        }
+
+        // 메시지 추가 함수
+        function addMessage(type, content, timestamp) {
+            if (!hasMessages) {
+                messagesContainer.innerHTML = '';
+                hasMessages = true;
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const typeLabel = type === 'sent' ? '📤 클라이언트 → 서버' : '📥 서버 → 클라이언트';
+            
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <span>${typeLabel}</span>
+                    <span>${timestamp}</span>
+                </div>
+                <div class="message-content">${content}</div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // 메시지 지우기
+        function clearMessages() {
+            messagesContainer.innerHTML = `
+                <div class="no-messages">
+                    <p>아직 메시지가 없습니다.</p>
+                    <p>버튼을 눌러 서버와 통신해 보세요!</p>
+                </div>
+            `;
+            hasMessages = false;
+        }
+
+        // 현재 시간 가져오기
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toTimeString().split(' ')[0];
+        }
+    </script>
+</body>
+</html>
